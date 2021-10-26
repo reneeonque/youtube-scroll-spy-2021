@@ -1,21 +1,23 @@
-let top_video;
+const video_players = [];
 
 /**
  * This gets called when youtube is ready to make video players
  */
 function onYouTubeIframeAPIReady() {
-    top_video = new YT.Player('player', {
-        height: '390',
-        width: '640',
-        videoId: 'RBlmBd3QN-U',
-        playerVars: {
-          'playsinline': 1
-        },
-        events: {
-          'onReady': onPlayerReady,
-          'onStateChange': onPlayerStateChange
-        }
-      });
+    document.querySelectorAll(".video .player").forEach(player => {
+        video_players.push(new YT.Player(player, {
+            height: '390',
+            width: '640',
+            videoId: player.getAttribute("data-video-id"),
+            playerVars: {
+              'playsinline': 1
+            },
+            events: {
+              'onReady': onPlayerReady,
+              'onStateChange': onPlayerStateChange
+            }
+        }));
+    });
 }
 
 /**
@@ -28,8 +30,10 @@ function onYouTubeIframeAPIReady() {
 function onPlayerReady(e) {
     console.log("Video player is ready");
 
-    e.target.mute();
-    e.target.playVideo();
+    if(e.target.getIframe().getAttribute("data-autoplay") === "1") {
+        e.target.mute();
+        e.target.playVideo();
+    }
 }
 
 /**
@@ -42,17 +46,25 @@ function onPlayerReady(e) {
  */
  function onPlayerStateChange(e) {
     console.log("Video player state has changed");
-    const container = document.querySelector(".container.image")
+    const container = e.target.getIframe().closest(".container.image")
+    const this_video_id = e.target.getVideoData().video_id;
+    const all_other_videos = video_players.filter(video => video.getVideoData().video_id !== this_video_id);
 
     if (e.data === YT.PlayerState.PLAYING) {
         // add the .can_stick to .container.image
-        container.classList.add("can_stick");
+        if (container){
+            container.classList.add("can_stick");
+        }
+
+        all_other_videos.forEach(video => video.pauseVideo());
      }
 
     if (e.data === YT.PlayerState.PAUSED) {
         // remove the .canstick from .container.image
-        container.classList.remove("can_stick");
-        container.classList.remove("sticky");
+        if (container) {
+            container.classList.remove("can_stick");
+            container.classList.remove("sticky");
+        }
      }
 }
 
@@ -69,14 +81,30 @@ watcher.inView(function () {
     if (container) {
         container.classList.add("sticky");
     }
-})
+});
 
 const close_button = document.querySelector(".stick .fa-close");
 
 close_button.addEventListener("click", function(e) {
     e.preventDefault();
 
+    // get the stick video's container
+    const container = e.target.closest(".stick");
+
+    // find the video player in the sticky div
+    const video = container.querySelector("[data-video-id");
+
+    // get the video id from the video player
+    const video_id = video.getAttribute("data-video-id");
+
+    // get the video plater from the video_players array
+    const player = video_players.find(video => video.getVideoData().video_id === video_id);
+
+    // unstick the sticky
     document.querySelector(".sticky").classList.remove("sticky");
     document.querySelector(".can_stick").classList.remove("can_stick");
-    top_video.pauseVideo();
+   
+    // pause the video
+    player.pauseVideo();
+
 });
